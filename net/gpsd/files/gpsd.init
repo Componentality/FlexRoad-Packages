@@ -10,6 +10,7 @@ start() {
     config_load gpsd
     config_get device core device
     config_get port core port
+	config_get speed core speed
     config_get_bool listen_globally core listen_globally
     config_get_bool enabled core enabled
     [ "$enabled" != "1" ] && exit
@@ -19,6 +20,10 @@ start() {
         exit 1
     }
     [ "$listen_globally" != "0" ] && append args "-G"
+	# apply port speed to device
+	stty speed $speed -F $device &> /dev/null
+
+	# run gpsd
     $PROG -n -P $PIDF -S $port $args $device
 }
 
