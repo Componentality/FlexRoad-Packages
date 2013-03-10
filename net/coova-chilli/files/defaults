@@ -1,0 +1,69 @@
+# -*- mode: shell-script; -*-
+#
+#   Coova-Chilli Default Configurations.
+#   To customize, copy this file to /etc/chilli/config
+#   and edit to your liking. This is included in shell scripts
+#   that configure chilli and related programs before file 'config'.
+
+HS_LOC_ID="__REPLACE_BY_YOUR_OWN__"
+HS_LOC_NAME="__REPLACE_BY_YOUR_OWN__"
+HS_NASID="__REPLACE_BY_YOUR_OWN__"
+
+#############################################################
+
+HS_WANIF=`uci -P/var/state get network.wan.ifname`               # WAN Interface toward the Internet
+HS_LANIF=`uci -P/var/state get network.lan.ifname`               # Subscriber Interface for client devices
+HS_UAMPORT=3990            # HotSpot UAM Port (on subscriber network)
+HS_UAMUIPORT=4990          # HotSpot UAM "UI" Port (on subscriber network, for embedded portal)
+
+# LOCAL MAC addresses
+#HS_MACALLOWLOCAL=on
+#HS_MACALLOW="XX-XX-XX-XX-XX-XX,XX-XX-XX-XX-XX-XX"
+
+# Below this line is pretty much standard for HotSpotSystems
+
+HS_DNS1=8.8.8.8
+HS_DNS2=8.8.4.4
+
+HS_NETWORK=192.168.182.0
+HS_NETMASK=255.255.255.0
+HS_UAMLISTEN=192.168.182.1
+HS_DNS_DOMAIN=key.chillispot.info
+HS_DYNIP=192.168.182.0
+HS_DYNIP_MASK=255.255.255.0
+HS_RADIUS=radius.hotspotsystem.com
+HS_RADIUS2=radius2.hotspotsystem.com
+
+HS_UAMHOMEPAGE=""
+HS_UAMFORMAT="https://customer.hotspotsystem.com/customer/hotspotlogin.php"
+HS_PROVIDER="HotSpotSystem"
+HS_PROVIDER_LINK="http://www.hotspotsystem.com/"
+
+HS_MODE=hotspot
+HS_TYPE=chillispot
+hs_lan_access="deny"
+
+HS_RADCONF="off"
+HS_UAMSERVER="hotspotsystem.com"
+HS_UAMSECRET="hotsys123"
+HS_RADSECRET="hotsys123"
+HS_UAMSERVER="customer.hotspotsystem.com"
+HS_AAA="radius"
+
+HS_UAMALLOW="194.149.46.0/24 198.241.128.0/17 66.211.128.0/17 216.113.128.0/17 70.42.128.0/17 \
+128.242.125.0/24 216.52.17.0/24 62.249.232.74 155.136.68.77 155.136.66.34 \
+66.4.128.0/17 66.211.128.0/17 66.235.128.0/17 88.221.136.146 195.228.254.149 \
+195.228.254.152 203.211.140.157 203.211.150.204 \
+www.paypal.com www.paypalobjects.com live.adyen.com \
+www.worldpay.com select.worldpay.com secure.ims.worldpay.com \
+www.rbsworldpay.com secure.wp3.rbsworldpay.com www.directebanking.com \
+betalen.rabobank.nl ideal.ing.nl internetbankieren.frieslandbank.nl \
+ideal.abnamro.nl ideal.snsreaal.nl ideal.triodos-onlinebanking.nl \
+www.hotspotsystem.com customer.hotspotsystem.com tech.hotspotsystem.com \
+a1.hotspotsystem.com a2.hotspotsystem.com a3.hotspotsystem.com a4.hotspotsystem.com \
+a5.hotspotsystem.com a6.hotspotsystem.com a7.hotspotsystem.com a8.hotspotsystem.com \
+a9.hotspotsystem.com a10.hotspotsystem.com a11.hotspotsystem.com a12.hotspotsystem.com \
+a13.hotspotsystem.com a14.hotspotsystem.com a15.hotspotsystem.com a16.hotspotsystem.com \
+a17.hotspotsystem.com a18.hotspotsystem.com a19.hotspotsystem.com a20.hotspotsystem.com"
+
+HS_UAMDOMAINS="paypal.com paypalobjects.com worldpay.com rbsworldpay.com adyen.com hotspotsystem.com"

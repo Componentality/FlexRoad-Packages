@@ -1,0 +1,187 @@
+menu "Saha Flex-Road image configuration"
+depends on PACKAGE_saha-common
+
+	config FLEXROAD_TRACKER
+	bool "Enable FlexRoad Tracker"
+	select PACKAGE_saha-tracker
+	select SAHA_FR_GW_SIERRA
+
+	config FLEXROAD_DISTANCE
+	bool "Enable FlexRoad Collision Preventions"
+	select PACKAGE_saha-distance
+	select FLEXROAD_DSRC
+
+	menu "FlexRoad Distance configuration"
+	depends on FLEXROAD_DISTANCE
+
+		config FLEXROAD_DISTANCE_MODE
+		bool "Distance one-to-one(direct) operation mode"
+		default y
+
+		config FLEXROAD_DISTANCE_DIRECT_PEER
+		depends on FLEXROAD_DISTANCE_MODE
+		string "'distance' peer IP address or hostname"
+		default 'localhost'
+
+		config FLEXROAD_DISTANCE_BROADCAST_LOCAL
+		string "'distance' local peer id"
+		default 'DSRC_A'
+
+		config FLEXROAD_DISTANCE_BROADCAST_REMOTE
+		string "'distance' remote peers broadcast id"
+		default 'DSRC_B'
+
+		config FLEXROAD_DISTANCE_MAX
+		int "Green distance"
+		default 600
+
+		config FLEXROAD_DISTANCE_MIN
+		int "Red distance"
+		default 100
+	endmenu
+
+	
+	choice 
+	prompt "Wi-Fi Configuration
+	default FLEXROAD_WIFI_NONE
+		config FLEXROAD_WIFI_NONE
+		bool "FlexRoad No Wi-Fi"
+
+		config FLEXROAD_DSRC
+		bool "FlexRoad DSRC"
+		select PACKAGE_saha-config-dsrc
+		
+		config FLEXROAD_HOTSPOT
+		bool "FlexRoad Bussity hostspot"
+		select PACKAGE_saha-config-hotspot
+	endchoice
+
+	config SAHA_FR_VIS_SERVER
+	depends on FLEXROAD_DSRC
+	default y
+	bool "B.A.T.M.A.N. mesh node statistics server"
+
+	config SAHA_FR_VIS_CLIENT
+	depends on FLEXROAD_DSRC
+	default y
+	bool "B.A.T.M.A.N. mesh node statistics server"
+
+	config SAHA_FR_BATMAN_DEBUG
+	depends on FLEXROAD_DSRC
+	default y
+	bool "Enable B.A.T.M.A.N. debug"
+	select KMOD_BATMAN_ADV_DEBUG_LOG
+
+	config FLEXROAD_DSRC_GW
+	depends on FLEXROAD_DSRC
+	select SAHA_FR_GW_BLA
+	bool "Enable DSRC <-> LAN/UMTS Gateway support"
+	default n
+
+	config SAHA_FR_GW_BLA
+	depends on FLEXROAD_DSRC
+	bool "Enable B.A.T.M.A.N. BLA II by default"
+	default y
+	select KMOD_BATMAN_ADV_BLA
+	help
+		Unselect this only if you exactly know what are you doing!
+
+	menu "Saha 802.11p DSRC configuration"
+	depends on FLEXROAD_DSRC || FLEXROAD_HOTSPOT
+
+		config SAHA_FR_DSRC_SSID
+		string "DSRC 802.11p SSID"
+		default "MESH-802.11P"
+
+		config SAHA_FR_DSRC_CHANNEL
+		int "DSRC 802.11p channel"
+		default 178
+
+		config SAHA_FR_DSRC_BSSID
+		string "DSRC 802.11p ad-hoc BSSID"
+		default "02:12:34:56:78:9a"
+
+		config SAHA_FR_DSRC_PROTO
+		string "DSRC 802.11p base hwmode"
+		default "11a"
+		help 
+			Do not change even if you understand what is it and why it is here
+
+		choice 
+		prompt "DSRC 802.11p national regulatory setting"
+		default SAHA_FR_DSRC_COUNTRY_RU
+
+			config SAHA_FR_DSRC_COUNTRY_RU
+			bool "RU (Russia)"
+
+			config SAHA_FR_DSRC_COUNTRY_FI
+			bool "FI (Finland)"
+
+			config SAHA_FR_DSRC_COUNTRY_NL
+			bool "NL (Netherlands)"
+		endchoice
+	endmenu
+
+
+	config SAHA_FR_GW_SIERRA
+	bool "Enable 3G Sierra Wireless modem support"
+	default y
+	select PACKAGE_kmod-usb-serial
+	select PACKAGE_kmod-usb-serial-sierrawireless
+	select PACKAGE_saha-config-sierra
+
+	config SAHA_FR_GW_SIERRA_START
+	depends on SAHA_FR_GW_SIERRA
+	bool "Start modem connection at system startup"
+	default n
+
+	config SAHA_FR_GW_SIERRA_DEFAULT
+	depends on SAHA_FR_GW_SIERRA
+	bool "Use modem connection as default internet gw instead of B.A.T.M.A.N. mesh"
+	default n
+
+	menu "3G APN configuration"
+	depends on SAHA_FR_GW_SIERRA
+
+		config SAHA_FR_GW_SIERRA_APN
+		depends on SAHA_FR_GW_SIERRA
+		string "APN"
+		default internet.mts.ru
+
+		config SAHA_FR_GW_SIERRA_USER
+		depends on SAHA_FR_GW_SIERRA
+		string "username"
+		default mts
+
+		config SAHA_FR_GW_SIERRA_PWD
+		depends on SAHA_FR_GW_SIERRA
+		string "password"
+		default mts
+	endmenu
+
+
+	config SAHA_FR_GW_LAN_STATIC
+	bool "Configure LAN interface with static IP address"
+	default y
+
+	config SAHA_FR_GW_LAN_IP
+	string "IP address"
+	depends on SAHA_FR_GW_LAN_STATIC
+	default 192.168.1.72
+
+	config SAHA_FR_GW_LAN_MASK
+	string "IP mask"
+	depends on SAHA_FR_GW_LAN_STATIC
+	default 255.255.255.0
+
+	config SAHA_FR_GW_LAN_DEFAULT_GW
+	string "Default gateway"
+	depends on SAHA_FR_GW_LAN_STATIC
+	default 192.168.1.1
+
+	config SAHA_FR_GW_LAN_DNS
+	string "DNS server"
+	depends on SAHA_FR_GW_LAN_STATIC
+	default 192.168.1.1
+
+endmenu

@@ -1,0 +1,134 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2013 Componentality
+
+START=41
+
+
+ppp_port=""
+gps_port=""
+
+configure_gps () {
+	local device=$1
+
+	cat > /etc/gcom/sierra.gcom << EOF
+# start infinite gps tracking 
+ opengt
+ set com 115200n81
+ set senddelay 0.05
+ waitquiet 3 0.5
+ flash 0.1
+ send 'AT!ENTERCND="A710"^m'
+ waitfor 15 "OK"
+ send 'AT!CUSTOM="GPSENABLE",1^m'
+ waitfor 15 "OK"
+#stop previous session
+ send "AT!GPSEND=0^m"
+ waitfor 15 "OK"
+ send "AT!GPSTRACK=1,255,1000,1000,1^m"
+ waitfor 15 "OK"
+EOF
+
+	gps_port=$device
+}
+
+detect_sierra_modem () {
+	local first_device=$1
+	local next_device=$2
+
+	# sierra modem consist of 6 single serial devices
+	local dev_s=`echo $first_device | sed s@[^0-9]@@g`
+	local next_id=`echo $next_device | sed s@[^0-9]@@g`
+	local dev_exp=$(($dev_s+3))
+
+	if [ $next_id -gt $dev_exp ]; then
+		# looks like sierra.
+		local query_dev="/dev/ttyUSB$dev_exp"
+		gcom info -d $query_dev &> /tmp/modem-info
+		if [ $? -eq 0 ]; then
+			MODEL=`grep Model /tmp/modem-info | cut -d: -f2 | sed "s@ @@g"`
+			if [ x$MODEL == xMC8790V ]; then
+				MC8790V_PRESENT=1
+				MC8790V_LOCATION=$query_dev
+			fi
+		fi
+
+		if [ $MC8790V_PRESENT -eq 1 ]; then
+			ppp_port=$MC8790V_LOCATION
+
+			dev_exp=$(($dev_s+2))
+			configure_gps "/dev/ttyUSB$dev_exp"
+
+			uci set saha.sierra.present=1
+			return 0 # modem was found
+		fi
+	fi
+	return 1
+}
+
+start() {
+	# load saha configuration
+	modem_presence=1 #not found
+	ppp_port=""
+
+	config_load saha
+
+	# get configuration state
+	config_get_bool configured configuration modem
+	
+	if [ "$configured" != "1" ]; then
+		# reconfigure device
+
+		QUERY_DEVICES=""
+		GROUPED_DEVICES=""
+		for device in `ls -1 -i /dev/ttyUSB* | sort | sed "s/ */ /"g | cut -d' ' -f3`; do
+			# detect all hadrware devices by grouping /dev/ttyUSBx char devices
+			device=`echo $device | sed s@/dev/@@`
+
+			GDEV=`echo $GROUPED_DEVICES | tr ' ' '\n' | grep $device`
+			[ x$GDEV != x ] && continue # skip it
+
+			# add current device to unique devices
+			QUERY_DEVICES="$QUERY_DEVICES $device"
+			#check that current device is not in linked list
+			SEARCH_STRING="/sys/bus/usb-serial/devices/$device/driver/"
+			for linked_device in `echo $SEARCH_STRING/ttyUSB* | tr ' ' '\n' | sed "s/.*ttyUSB\([0-9]*\)$/\1/" | sort -n`; do
+				LDEV="ttyUSB$linked_device"
+				[ x$LDEV == x$device ] && continue
+				GROUPED_DEVICES="$GROUPED_DEVICES $LDEV"
+			done
+		done
+
+		# now detect all USB serial devices we have
+		UNHANDLED_DEVICES="$QUERY_DEVICES"
+		QL_DEVICES="$QUERY_DEVICES $LDEV"
+		for unique_sd in  $QUERY_DEVICES; do
+			next_sd=`echo $QL_DEVICES | tr ' ' '\n' | grep -A1 -E "$unique_sd\$" | tail -n1`
+			detect_sierra_modem $unique_sd $next_sd
+			modem_presence=$?
+			[ $modem_presence -eq 0 ] && break
+		done
+
+		uci set saha.configuration.modem='true'
+
+		if [ $modem_presence -eq 0 ]; then
+			# get options
+			uci set network.wan.device=$ppp_port
+
+			# configure gps device
+			#config_get_bool allow_gps sierra allow_gps
+			#if [ "$allow_gps" == "1" ]; then
+			#	uci set gpsd.core.device=$gps_port
+			#	uci set gpsd.core.enabled=true
+			#	# by default port speed is set to 4800
+			#	# no need to change
+			#fi
+		fi
+		uci del saha.sierra
+	fi
+
+	uci commit
+}
+
+stop() {
+	echo nothing-to-do >> /dev/null
+}

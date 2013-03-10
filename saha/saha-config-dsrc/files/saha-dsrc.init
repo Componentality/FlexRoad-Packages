@@ -1,0 +1,144 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2013 Componentality
+
+START=42
+
+
+config_wireless_iface() {
+	local ID=$1
+	local MESH_CRDA_CODE=$2
+	local MESH_CCH=$3
+	local MESH_ESSID=$4
+	local MESH_BSSID=$5
+
+	uci set wireless.radio`echo $ID`=wifi-device
+	uci set wireless.radio`echo $ID`.type=mac80211
+	uci set wireless.radio`echo $ID`.country=$MESH_CRDA_CODE
+	uci set wireless.radio`echo $ID`.hwmode=11a
+	uci set wireless.radio`echo $ID`.channel=$MESH_CCH
+	uci set wireless.radio`echo $ID`.chanbw=10
+
+	# limit txpower
+	uci set wireless.radio`echo $ID`.txpower=17
+
+	uci set wireless.@wifi-iface[`echo $ID`]=wifi-iface
+	uci set wireless.@wifi-iface[`echo $ID`].device=radio`echo $ID`
+	uci set wireless.@wifi-iface[`echo $ID`].encryption=none
+	uci set wireless.@wifi-iface[`echo $ID`].ssid=$MESH_ESSID
+	uci set wireless.@wifi-iface[`echo $ID`].mode=adhoc
+	uci set wireless.@wifi-iface[`echo $ID`].network=mesh
+	uci set wireless.@wifi-iface[`echo $ID`].bssid=$MESH_BSSID
+
+	uci set wireless.radio`echo $ID`.disabled=0
+}
+
+start() {
+	config_load saha
+
+	# get configuration state
+	config_get_bool configured configuration dsrc
+	
+	if [ "$configured" != "1" ]; then
+		# reconfigure mesh
+		config_get MESH_CRDA_CODE dsrc country
+		config_get MESH_CCH dsrc channel
+		config_get MESH_ESSID dsrc essid
+		config_get MESH_BSSID dsrc bssid
+
+		# batman options
+		# option vis_server 'true'
+		# option vis_client 'true'
+		# option bla 'false'
+		# option gw_mode 'false'
+		config_get_bool VIS_S dsrc vis_server
+		config_get_bool VIS_C dsrc vis_client
+		config_get_bool BLA   dsrc bla
+		config_get_bool GWM   dsrc dsrc_gw
+
+		# check for wifi card
+		wifi detect
+
+		LSPCI="/usr/sbin/lspci"
+		[ -x $LSPCI ] || return
+
+		LSPCI_ATH5K=`$LSPCI -n -mm -d 168c:001b`
+		LSPCI_ATH9K=`$LSPCI -n -mm -d 168c:0029`
+		LOCATION=-1;
+		if [ "x${LSPCI_ATH5K}" != "x" ] || [ "x${LSPCI_ATH9K}" != "x" ]; then
+
+			for drv in 5K 9K; do
+				L=$(eval echo `echo \\$LSPCI_ATH$drv`)
+				[ "x$L" == x ] && continue;
+				LOCATION=`echo $L | cut -d' ' -f1`
+
+				local ID=`ls -1 /sys/bus/pci/devices/0000:$LOCATION/ieee80211 | sed s@phy@@`
+				logger "Configuring interface phy$ID for b.a.t.m.a.n. mesh"
+
+				#configure 802.11p mesh
+				config_wireless_iface $ID $MESH_CRDA_CODE $MESH_CCH $MESH_ESSID $MESH_BSSID
+			done
+
+			uci set network.mesh="interface"
+			uci set network.mesh.proto="none"
+			uci set network.mesh.mtu="1528"
+
+			uci set network.bat0="interface"
+			uci set network.bat0.proto="none"
+			uci set network.bat0.ifname="bat0"
+			uci set network.bat0.auto="1"
+
+			# delete HT20 options
+			uci del wireless.radio0.htmode
+			uci del wireless.radio0.ht_capab
+
+			if [ $GWM -eq 1 ]; then
+				LANIF=`uci get network.lan.ifname`
+
+				uci set network.lan.ifname="$LANIF bat0"
+				# ignore dhcp requests on lan
+				uci set dhcp.lan.ignore=1
+
+				# set runtime configuration
+				ifconfig bat0 up
+				batctl bl $BLA
+				# wakeup wifi 
+				ifup mesh
+
+				#join them into bridge
+				brctl addif br-lan bat0
+			fi
+
+			uci commit
+
+			VIS_MODE=off
+			if [ $VIS_S -ne 0 ] || [ $VIS_C -ne 0 ]; then
+				[ $VIS_S -eq 1 ] && VIS_MODE=server
+				[ $VIS_C -eq 1 ] && VIS_MODE=client
+			fi
+			brctl addif br-lan bat0
+
+			# update B.A.T.M.A.N settings
+			CFG=/etc/config/batman-adv
+
+			sed -e "s/option 'bridge_loop_avoidance'.*/option 'bridge_loop_avoidance' '$BLA'/" \
+				-e "s/option 'vis_mode'.*/option 'vis_mode' '$VIS_MODE'/" $CFG > $CFG.new
+			mv $CFG.new $CFG
+		fi
+
+		uci set saha.configuration.dsrc='true'
+		uci del saha.dsrc.essid
+		uci del saha.dsrc.bssid
+		uci del saha.dsrc.channel
+		uci del saha.dsrc.hwmode
+		uci del saha.dsrc.country
+		uci del saha.dsrc.dsrc_gw
+		uci del saha.dsrc.vis_server
+		uci del saha.dsrc.vis_client
+		uci del saha.dsrc.bla
+	fi
+	uci commit
+}
+
+stop() {
+	echo nothing-to-do >> /dev/null
+}
