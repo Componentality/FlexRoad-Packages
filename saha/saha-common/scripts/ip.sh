@@ -25,7 +25,7 @@ set\ network.lan.dns='$dns'\n\
 EOF\n"
 	sed -i "/ucidef_set_interface_lan()/{:r;/}/!{N;br}; s/\n.*\n/\n$RP\n/;}" $FILE_D
 
-	RP="	ucidef_set_interfaces_lan \"eth0\""
+	RP="	ucidef_set_interface_lan \"eth0\""
 	sed -i "/rb-411u/{:r;/\;\;/!{N;br}; s/\n.*\n/\n$RP\n/;}" $FILE_N
 }
 
@@ -41,7 +41,7 @@ set\ network.lan.proto='dhcp'\n\
 EOF\n"
 	sed -i "/ucidef_set_interface_lan()/{:r;/}/!{N;br}; s/\n.*\n/\n$RP\n/;}" $FILE_D
 
-	RP="	ucidef_set_interfaces_lan \"eth0\""
+	RP="	ucidef_set_interface_lan \"eth0\""
 	sed -i "/rb-411u/{:r;/\;\;/!{N;br}; s/\n.*\n/\n$RP\n/;}" $FILE_N
 }
 
